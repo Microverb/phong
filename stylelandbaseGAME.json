@@ -1,0 +1,203 @@
+{
+  "version": 8,
+  "name": "Basic",
+  "metadata": {
+    "mapbox:autocomposite": true,
+    "mapbox:type": "template"
+  },
+  "sources": {
+    "main": {
+      "url": "mapbox://mapbox.mapbox-streets-v8",
+      "type": "vector",
+      "minzoom": 0,
+      "maxzoom": 4
+    },
+    "country-boundaries": {
+      "url": "mapbox://mapbox.country-boundaries-v1",
+      "type": "vector",
+      "minzoom": 0,
+      "maxzoom": 0
+    },
+    "terrain": {
+      "url": "mapbox://mapbox.mapbox-terrain-v2",
+      "type": "vector",
+      "minzoom": 0,
+      "maxzoom": 5
+    }
+  },
+  "center": [
+    0,
+    0
+  ],
+  "sprite": "mapbox://sprites/mapbox/basic-v9",
+  "glyphs": "mapbox://fonts/mapbox/{fontstack}/{range}.pbf",
+  "sprite": "mapbox://sprites/garygibbons/clb19vjc6001514kbdhqb7iaa/bibhcwxqclqwegx5z06q7gyji",
+  "glyphs": "mapbox://fonts/garygibbons/{fontstack}/{range}.pbf",
+  "layers": [
+    {
+      "id": "background",
+      "type": "background",
+      "paint": {
+        "background-color": "rgba(88,123,182, 1)"
+      },
+      "interactive": true
+    },
+    {
+      "id": "country boundary fill",
+      "type": "fill",
+      "source": "country-boundaries",
+      "source-layer": "country_boundaries",
+      "paint": {
+        "fill-color": "rgba(0,102,0, 1)"
+      }
+    },
+
+    {
+      "id": "terrcrop",
+      "source": "terrain",
+      "source-layer": "landcover",
+      "type": "fill",
+      "filter": [
+        "==",
+        "class",
+        "grass"
+      ],
+      "paint": {
+        "fill-color": "rgba(20,80,20, 1)"
+      }
+    },
+
+    {
+      "id": "terrscrub",
+      "source": "terrain",
+      "source-layer": "landcover",
+      "type": "fill",
+      "filter": [
+        "==",
+        "class",
+        "scrub"
+      ],
+      "paint": {
+        "fill-color": "rgba(20,92,20, 1)"
+      }
+    },
+   
+    {
+      "id": "terrwood",
+      "source": "terrain",
+      "source-layer": "landcover",
+      "type": "fill",
+      "filter": [
+        "==",
+        "class",
+        "wood"
+      ],
+      "paint": {
+        "fill-color": "rgba(40,102,0, 1)"
+      }
+    },
+    {
+      "id": "terrhillshade",
+      "source": "terrain",
+      "source-layer": "hillshade",
+      "type": "fill",
+      "paint": {
+      "fill-color": "rgba(92,64,51, 0.5)"
+   
+      }
+      },
+
+    {
+      "id": "terrsnow",
+      "source": "terrain",
+      "source-layer": "landcover",
+      "type": "fill",
+      "filter": [
+        "==",
+        "class",
+        "snow"
+      ],
+      "paint": {
+        "fill-color": "rgba(250,250,250, 1)"
+      }
+    },
+
+    {
+      "id": "mainwaterhires",
+      "source": "main",
+      "source-layer": "water",
+      "type": "fill",
+      "paint": {
+        "fill-color": "rgba(68,108,176, 1)"
+      }
+    },
+    {
+      "id": "mainwaterpattern",
+      "source": "main",
+      "source-layer": "water",
+      "type": "fill",
+      "layout": {},
+      "paint": {
+          "fill-color": "hsla(167, 79%, 87%, 100%)",
+          "fill-opacity": 0.15,
+          "fill-pattern": "water64"
+      }
+  },
+
+    {
+      "id": "mainwaterway",
+      "source": "main",
+      "source-layer": "waterway",
+      "type": "line",
+      "paint": {
+        "line-color": "rgba(128,128,250, 1)"
+      }
+    },
+
+    {
+      "id": "mainroadhires",
+      "source": "main",
+      "source-layer": "road",
+      "type": "line",
+      "paint": {
+        "line-color": "rgba(128,128,128, 1)"
+      }
+    },
+
+
+    {
+      "id": "country-label",
+      "type": "symbol",
+      "source": "main",
+      "source-layer": "place_label",
+      "layout": {
+          "text-field": ["coalesce", ["get", "name_en"], ["get", "name"]],
+          "text-pitch-alignment": "viewport",
+          "text-font": ["Arial Unicode MS Regular"],
+         "text-size": [
+              "interpolate",
+              ["linear"],
+              ["zoom"],
+              3,
+              ["step", ["get", "symbolrank"], 12, 9, 11, 12, 10, 14, 6.5],
+              7,
+              ["step", ["get", "symbolrank"], 27, 9, 23, 10, 21, 12, 20]
+          ],
+          "text-anchor": "top",
+          "text-offset": [0, -3],
+      "text-allow-overlap": true
+      },
+      "paint": {"text-halo-color": "#f9e9cd", "text-halo-width": 2}
+  }
+
+
+
+
+
+
+
+
+
+
+  ]
+}

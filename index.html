@@ -1,0 +1,804 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+  <meta charset="utf-8">
+  <title>Gammon Squadron</title>
+  <meta name="viewport" content="initial-scale=1,maximum-scale=1,user-scalable=no">
+  <link href="http://fonts.cdnfonts.com/css/seven-segment" rel="stylesheet">
+  <link href="https://api.mapbox.com/mapbox-gl-js/v2.10.0/mapbox-gl.css" rel="stylesheet">
+  <script src="https://api.mapbox.com/mapbox-gl-js/v2.10.0/mapbox-gl.js"></script>
+  <script src='https://unpkg.com/@turf/turf@6/turf.min.js'></script>
+  <script src="http://unpkg.com/tone"></script>
+
+  <style>
+    * {
+      font-family: sans-serif;
+    }
+
+    body {
+      /* height: 100%; overflow: hidden; */
+      margin: 0px;
+      padding: 0px;
+      background-color: rgb(31, 31, 31);
+
+    }
+
+
+    .surbox {
+      z-index: 2;
+      position: absolute;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      top: 3vh;
+      left: 2vw;
+      width: 23vw;
+      height: 29vh;
+      background-color: rgb(31, 31, 31);
+      box-sizing: border-box;
+      border-radius: 16px 16px 16px 16px;
+      border: 4px solid #b3a723;
+    }
+
+
+    .statbox {
+      z-index: 3;
+      position: absolute;
+      width: 70%;
+      height: 26vh;
+
+
+      /*  background-color: rgb(46, 15, 58); */
+      color: #48ad09;
+      text-shadow: rgba(30, 235, 30, 0.251) 0px 0px 3px;
+
+      font-weight: bolder;
+      font-size: 1.8vw;
+      line-height: 5.2vh;
+      overflow: hidden;
+    }
+
+
+    /*  @media only screen and (max-width: 800px) {
+  .statbox {
+    width: 20vh;
+    font-size: 2.4vh;
+    line-height: 5.2vh;
+  }
+ } */
+
+    #mapmini {
+      z-index: 1;
+      position: absolute;
+      top: 34vh;
+      left: 2vw;
+      height: 63vh;
+      width: 23vw;
+      font-size: 18px;
+      display: flex;
+      box-sizing: border-box;
+      background-color: #015a08;
+      border-radius: 16px 16px 16px 16px;
+      border: 4px solid #b3a723;
+    }
+
+    .dotcls {
+      display: flex;
+      width: 5px;
+      height: 5px;
+      margin: auto;
+      z-index: 100;
+
+      border-left: 6px solid rgba(255, 70, 184, 0);
+      border-top: 6px solid rgba(255, 70, 184, 0);
+    }
+
+    canvas {
+      outline: none;
+    }
+
+    #map {
+
+      z-index: 1;
+      position: absolute;
+      top: 3vh;
+      right: 2vw;
+      height: 94vh;
+      width: 72vw;
+      box-sizing: border-box;
+      /*  background-color: #f80830; */
+      border-radius: 16px 16px 16px 16px;
+      border: 4px solid #b3a723;
+      /* transform: scale(1.4); */
+    }
+
+    .pigimage {
+      width: 100px;
+      filter: drop-shadow(5px 5px 5px #222222);
+      /* filter: hue-rotate(90deg); */
+    }
+
+    #features {
+      z-index: 4;
+      position: absolute;
+      bottom: 3vh;
+      right: 2vw;
+      height: 40px;
+      width: 72vw;
+      color: #48ad09;
+      text-align: center;
+      padding-top: 1vh;
+      box-sizing: border-box;
+      background-color: rgb(31, 31, 31);
+      border-radius: 0px 0px 16px 16px;
+      border: 4px solid #b3a723;
+      /* transform: scale(1.4); */
+      visibility: hidden;
+    }
+
+
+
+    #map .mapboxgl-ctrl-logo {
+      display: none !important;
+    }
+
+    .hitimage {
+      width: 400px;
+      filter: drop-shadow(5px 5px 5px #222222);
+      /*  visibility: hidden; */
+    }
+  </style>
+
+</head>
+
+<body>
+  <div id="mapmini">
+    <img class="dotcls" id="dotid" src="images/dot50.png">
+  </div>
+  <div id="map"></div>
+  <div class="surbox">
+    <div class="statbox" id="stats"></div>
+  </div>
+  <div id="features"></div>
+  <img class="pigimage" id="pigpic" src="images/prettyeyes.gif">
+  <img class="hitimage" id="hitpic" src="">
+
+  <script>
+
+    /* load array with speed and zoom levels*/
+    // keep top speed under 500 to avoid skipping trigger events
+    let mobility = [
+      [-6, -5, -4, -3, -2, -1, 0, 1, 2, 3, 4, 5, 6],
+      [7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7],
+      [-600, -600, -600, -300, -150, -75, 0, 75, 150, 300, 600, 600, 600],
+      [80, 80, 80, 80, 80, 80, 80, 80, 80, 80, 80, 80, 80]
+    ];
+
+    // Create pig starting point, mobility level, and properties //
+    var left = false;
+    var right = false;
+    var staTrate = 0
+    var graphRate = 0
+    var wpnrange = 0.5
+    var gas = 1000
+    // gas challenging at 600
+    var sitrep = "Hover"
+    var spin = 0
+    var coordinates = []
+    var coins = 0
+    var moblvl = 6
+    var long = 16.76
+    var lat = 58.12
+    var prevlong = 16.76
+    var prevlat = 58.12
+    var direction = 0
+    var speed = 0
+    var accel = 1
+    var decel = 1
+    var curzoomlvl = mobility[1][moblvl]
+    var tgtId = 0
+    var audiodor = new Audio('images/doreen.mp3')
+    var audio = new Audio('images/blastnoise.mp3')
+    var proximity = "--"
+    // grab 'hud' element //
+    const statBox = document.getElementById("stats")
+    const hitblast = document.getElementById("hitpic")
+    const feats = document.getElementById("features")
+
+    //mapbox token
+    mapboxgl.accessToken = 'pk.eyJ1IjoiZ2FyeWdpYmJvbnMiLCJhIjoiY2tvenZ4c2lxMGhwdjJ2bnp4NG5uenp6eiJ9.b2YvwB5kqQscYeVo35pjBA';
+
+    //load main map
+    /*   const map = new mapboxgl.Map({
+          container: 'map',
+          zoom: curzoomlvl,
+          center: [long, lat],
+          pitch: 0,
+          bearing: 0,
+          style: `mapbox://styles/garygibbons/cl9bt37qd008j14pifa596mkl`,
+          projection: 'mercator'
+        });
+        map.keyboard.disable();
+        map.dragRotate.disable(); 
+        //  map.showTileBoundaries = true;
+    */
+
+    const map = new mapboxgl.Map({
+      container: 'map',
+      center: [long, lat],
+      pitch: 0,
+      bearing: 0,
+      zoom: curzoomlvl,
+      style: 'stylelandbaseGAME.json',
+      attributionControl: false
+    });
+    map.keyboard.disable();
+    map.dragRotate.disable();
+    /* map.showTileBoundaries = true; */
+
+
+    //load minimap
+    const mapmini = new mapboxgl.Map({
+      container: 'mapmini',
+      zoom: 2.2,
+      center: [long, lat],
+      pitch: 0,
+      bearing: 0,
+      style: `mapbox://styles/garygibbons/clb3yhgz1000114oono3ent4q`,
+      projection: 'mercator',
+      attributionControl: false
+    });
+    mapmini.keyboard.disable();
+    mapmini.dragPan.disable();
+    mapmini.scrollZoom.disable();
+
+    // Add Markers
+    const pigmark = new mapboxgl.Marker({
+      element: pigpic,
+      pitchAlignment: "map"
+    });
+
+    const hitmark = new mapboxgl.Marker({
+      element: hitpic
+    });
+
+    /*  var jimbob = turf.randomPoint(100, { bbox: [-180, -60, 180, 80] });
+      console.log(JSON.stringify(jimbob)); */
+
+    map.on('load', () => {
+      //  map.transform._fov = 1.2;
+      pigmark.addTo(map);
+
+
+
+      // Add a capital cities of the world
+      map.addSource('points', {
+        'type': 'geojson',
+        'data': `capitals.geojson`,
+        'generateId': true,
+      });
+      // Add a circle layer
+      /*      map.addLayer({
+              'id': 'circle',
+              'type': 'circle',
+              'source': 'points',
+              'paint': {
+                'circle-color': '#ffd700',
+                // distant stop, pixel size, close stop, pixel size
+                "circle-radius": ['interpolate', ["exponential", 1], ['zoom'], 9, 30, 12, 40],
+                'circle-stroke-width': ['interpolate', ["exponential", 1], ['zoom'], 9, 15, 12, 20],
+                "circle-pitch-alignment": "map",
+                'circle-stroke-opacity': 0.6,
+                'circle-stroke-color': [
+                  'case',
+                  ['boolean', ['feature-state', 'hover'], false],
+                  '#00d700',
+                  '#ff1122'
+                ]
+              }
+            }); */
+
+
+
+
+
+
+
+      mapmini.addSource('points', {
+        'type': 'geojson',
+        'data': `capitals.geojson`,
+        'generateId': true,
+      });
+
+      mapmini.addLayer({
+        'id': 'minicircle',
+        'type': 'circle',
+        'source': 'points',
+        'paint': {
+          'circle-color': '#ffd700',
+          'circle-radius': 1.5,
+          'circle-stroke-width': 1.5,
+          'circle-stroke-color': [
+            'case',
+            ['boolean', ['feature-state', 'hover'], false],
+            '#00d700',
+            '#ff1122'
+          ]
+        }
+      });
+
+
+      map.loadImage(
+        'images/DooreenPhongRage.png',
+        (error, image) => {
+          if (error) throw error;
+
+          // Add the image to the map style.
+          map.addImage('phong', image);
+
+
+          // Add a layer to use the image to represent the data.
+          map.addLayer({
+            'id': 'phonglayer',
+            'type': 'symbol',
+            'source': 'points', // reference the data source
+            'layout': {
+              'icon-image': 'phong', // reference the image
+              'icon-size': 0.5,
+              "icon-allow-overlap": true
+            },
+            'paint': {
+              'icon-opacity': [
+                'case',
+                ['boolean', ['feature-state', 'hover'], true],
+                0,
+                1
+              ]
+            }
+          });
+        }
+      );
+
+
+
+
+      map.loadImage(
+        'images/curler163.png',
+        (error, image) => {
+          if (error) throw error;
+
+          // Add the image to the map style.
+          map.addImage('curler', image);
+
+
+
+          // Add a layer to use the image to represent the data.
+          map.addLayer({
+            'id': 'curlayer',
+            'type': 'symbol',
+            'source': 'points', // reference the data source
+            'layout': {
+              'icon-image': 'curler', // reference the image
+              'icon-size': 0.4,
+              "icon-allow-overlap": true
+            },
+            'paint': {
+              'icon-opacity': [
+                'case',
+                ['boolean', ['feature-state', 'hover'], true],
+                1,
+                0
+              ]
+            }
+
+          });
+        }
+      );
+
+
+      for (let i = 0; i < 241; i++) {
+        map.setFeatureState(
+          { source: 'points', id: i }, //can change ID
+          { hover: true }
+        );
+      }
+
+      for (let i = 0; i < 241; i++) {
+        mapmini.setFeatureState(
+          { source: 'points', id: i }, //can change ID
+          { hover: true }
+        );
+      }
+
+    });
+    // end of onload section
+
+
+    // find targets in range
+    function rangeScan() {
+      var features = (map.querySourceFeatures('points', {
+        sourceLayer: 'circle',
+      }));
+      // remove duplicates and call it deduplicated
+      let ids = features.map(o => o.id)
+      let deduplicated = features.filter(({ id }, index) => !ids.includes(id, index + 1))
+      var nearest = 1000
+      var len = deduplicated.length
+      // if targets in range find closest 
+      if (len > 0) {
+        for (let i = 0; i < (len); i++) {
+          var from = turf.point([long, lat]);
+          var to = turf.point(deduplicated[i]['geometry']['coordinates']);
+          var toto = (deduplicated[i]['id']);
+          var options = { units: 'kilometers' };
+          var distance = turf.distance(from, to, options);
+          var staTus = (map.getFeatureState({ source: 'points', id: toto }));
+          if ((distance < nearest) && (staTus['hover'] === true)) {
+            coordinates = (deduplicated[i]['geometry']['coordinates']),
+              nearest = distance, tgtId = toto
+          }
+        }
+      }
+      return nearest;
+    }
+
+
+    function fuel() {
+      var from = turf.point([long, lat]);
+      var to = turf.point([prevlong, prevlat]);
+      var options = { units: 'kilometers' };
+      var distraveled = turf.distance(from, to, options);
+      //  console.log(distraveled);
+      prevlong = long;
+      prevlat = lat;
+      return distraveled
+    }
+
+    // thdop1()
+
+    // Define the animation
+    function screenUpdateCycle() {
+
+      if (left) {
+        spin = spin - 0.2
+        if (spin < -4) { spin = -4 }
+      }
+      if (right) {
+        spin = spin + 0.2
+        if (spin > 4) { spin = 4 }
+      }
+
+
+
+
+      // calc direction and location
+      direction += spin
+      if (lat > 80) { direction = 180 }
+      if (lat < -80) { direction = 0 }
+      var point = turf.point([long, lat]);
+      var distal = (mobility[2][moblvl]) / 500;
+      var bear = direction;
+      var options = { units: 'miles' };
+      var destination = turf.destination(point, distal, bear, options);
+      var codins = (destination.geometry.coordinates);
+      // console.log(direction);
+      long = codins[0];
+      lat = codins[1];
+
+
+      // Update the player data to a new position
+      //   long += mobility[2][moblvl] * Math.sin(direction) / 50000;
+      //   lat += mobility[2][moblvl] * Math.cos(direction) / 50000;
+      // Keep direction and speed within bounds //
+      if (direction < 0) { direction = 359 }
+      if (direction > 359) { direction = 0 }
+      // Set rotation and location //
+      pigmark.setRotation([
+        direction
+      ]);
+      // update locations and icons //
+      pigmark.setLngLat([
+        long,
+        lat
+      ]);
+
+
+      // smooth zoom changes //
+      if (curzoomlvl > mobility[1][moblvl]) {
+        curzoomlvl = curzoomlvl - 0.08
+      }
+      if (curzoomlvl < mobility[1][moblvl]) {
+        curzoomlvl = curzoomlvl + 0.08
+      }
+
+      // update icon size to match zoom smoothly //
+      var currWidth = pigpic.clientWidth;
+      if (currWidth < mobility[3][moblvl]) {
+        pigpic.style.width = (currWidth + 1) + "px";
+      }
+      if (currWidth > mobility[3][moblvl]) {
+        pigpic.style.width = (currWidth - 1) + "px";
+      }
+
+
+      wpnrange = 16
+
+      /*  if (moblvl === 3 || moblvl === 4 || moblvl === 5 || moblvl === 7 || moblvl === 8 || moblvl === 9) {
+            sitrep = "Flight"
+          }
+          else if (moblvl === 0 || moblvl === 1 || moblvl === 2 || moblvl === 10 || moblvl === 11 || moblvl === 12) {
+            sitrep = "Supersonic"
+          }
+          else { sitrep = "Hover" }
+    
+    
+          if (mobility[1][moblvl] === 8) {
+            wpnrange = 5
+          }
+          else (wpnrange = 2)
+    */
+
+      // if moved update map centres//
+      if (moblvl !== 6 || left === true || right === true) {
+
+        // original routine
+        map.jumpTo({
+          center: [
+            long,
+            lat
+          ],
+          zoom: curzoomlvl,
+          bearing: 0
+        });
+
+
+        //   thdop1()
+
+
+
+        if (graphRate > 3) {
+          mapmini.jumpTo({
+            center: [
+              long,
+              lat
+            ]
+          }),
+
+            //check for targets //
+            proximity = rangeScan()
+          if (proximity === 1000) { proximity = "--" }
+          else if (proximity < wpnrange) {
+            hitmark.setLngLat([
+              coordinates[0],
+              coordinates[1]
+            ]);
+            gas = gas + 400,
+              hitblast.src = "images/WS2K.gif";
+            hitmark.addTo(map),
+              setTimeout(function () {
+                hitblast.src = "";
+              }, 2000);
+            coins++,
+              proximity = "HIT",
+              map.setFeatureState(
+                { source: 'points', id: tgtId }, //can change ID
+                { hover: false },
+              );
+            mapmini.setFeatureState(
+              { source: 'points', id: tgtId }, //can change ID
+              { hover: false },
+            );
+            audio.play(),
+
+
+
+              features.style.opacity = "visible",
+
+              feats.textContent = `DOREEN PHONG!   $1`;
+            setTimeout(function () {
+              features.style.visibility = "visible",
+                audiodor.play()
+            }, 500);
+
+
+
+            setTimeout(function () {
+              features.style.visibility = "hidden"
+
+gasuse            }, 3000);
+            // console.log('in', map.getFeatureState({source: 'points', id: tgtId})) //
+          }
+          else {
+            proximity = proximity.toFixed(2)
+          }
+
+          graphRate = 0
+        }
+        graphRate++
+
+      }
+      // update 'hud' //
+
+
+      if (staTrate > 10) {
+      
+        gasuse = fuel();
+        gas = gas - gasuse;
+
+
+        stats.setAttribute('style', 'white-space: pre;');
+        statBox.textContent = `Speed: ${mobility[2][moblvl]} kph\r\nDeg: ${long.toFixed(2)}, ${lat.toFixed(2)}\r\nTgt Range: ${proximity}\r\nCoins: $ ${coins}\r\nGas: ${gas.toFixed(0)} litres`;
+        staTrate = 0
+      }
+      staTrate++
+
+      if (gas > 0) {
+
+        requestAnimationFrame(screenUpdateCycle);
+      }
+      else {
+        gas = 0;
+        features.style.opacity = "visible",
+
+          feats.textContent = `YO OUTA GAS BRO !`;
+        setTimeout(function () {
+          features.style.visibility = "visible"
+        }, 500);
+
+
+
+        setTimeout(function () {
+          features.style.visibility = "hidden"
+        }, 3000);
+
+        stats.setAttribute('style', 'white-space: pre;');
+        statBox.textContent = `Speed: ${mobility[2][moblvl]} kph\r\nDeg: ${long.toFixed(2)}, ${lat.toFixed(2)}\r\nTgt Range: ${proximity}\r\nCoins: $ ${coins}\r\nGas: ${gas.toFixed(0)} litres`;
+        staTrate = 0
+      }
+      //  console.log(gasuse)
+
+      // Request the next frame of the animation.
+
+
+    }
+    // Start the animation. //
+    requestAnimationFrame(screenUpdateCycle);
+
+
+
+    window.addEventListener("keydown", function (event) {
+      switch (event.keyCode) {
+        case 37:
+          if (left === false) {
+            spin = -0.5;
+            left = true;
+          }
+          break;
+        case 39:
+          if (right === false) {
+            spin = 0.5;
+            right = true;
+            break;
+          }
+      }
+    }, false);
+
+    window.addEventListener("keyup", function (event) {
+      switch (event.keyCode) {
+        case 37:
+          spin = 0;
+          left = false;
+          break;
+        case 39:
+          spin = 0;
+          right = false;
+          break;
+      }
+    }, false);
+
+
+    // directional keys event listener
+    let isKeyDown = false;
+    document.body.addEventListener('keydown', function (e) {
+
+      if (e.which == 38 && moblvl < 10) {
+        if (isKeyDown) { return; } // If key was already down, don't do anything
+        isKeyDown = true; // up
+        moblvl++;
+        manual = true;
+      }
+      if (e.which == 40 && moblvl > 2) {
+        if (isKeyDown) { return; } // If key was already down, don't do anything
+        isKeyDown = true; // up // down
+        moblvl--;
+        manual = true;
+      }
+    }, true);
+    document.addEventListener("keyup", (event) => {
+      if (event.keyCode == 38 || 40 || 39 || 37) {
+        isKeyDown = false;
+      }
+    });
+
+    // window.addEventListener('resize', () => {
+    //   const browserZoomLevel = Math.round(window.devicePixelRatio * 100);
+    //   console.log(browserZoomLevel)
+    // })
+
+
+
+    function thdop2() {
+      var point = turf.point([long, lat]);
+      var distance = -7;
+      var bearing = direction;
+      var options = { units: 'miles' };
+      var destination = turf.destination(point, distance, bearing, options);
+      var coorods = turf.coordAll(destination);
+      var coolong = coorods[0][0];
+      var coolat = coorods[0][1];
+      console.log(coolong);
+      const camera = map.getFreeCameraOptions();
+      const position = [coolong, coolat];
+      const altitude = 6000;
+      camera.position = mapboxgl.MercatorCoordinate.fromLngLat(position, altitude);
+      camera.lookAtPoint([long, lat]);
+      camera.setPitchBearing(755, direction);
+      map.setFreeCameraOptions(camera);
+    }
+
+
+    function thdop1() {
+      var point = turf.point([long, lat]);
+      var distance = 6;
+      var bearing = direction;
+      var options = { units: 'miles' };
+      var destination = turf.destination(point, distance, bearing, options);
+      var coorods = turf.coordAll(destination);
+      var coolong = coorods[0][0];
+      var coolat = coorods[0][1];
+      console.log(coolong);
+      map.easeTo({
+        center: [
+          coolong,
+          coolat
+        ],
+        zoom: curzoomlvl,
+        pitch: 70,
+        bearing: bearing,
+      });
+    }
+
+
+
+
+
+    const synth = new Tone.Synth().toMaster();
+
+   /* const filter = new Tone.AutoFilter({
+      frequency: 100,
+      depth: 0.5
+    }).connect(Tone.Master);
+    synth.connect(filter);
+
+   const lfo = new Tone.LFO("32n", 00, 400);
+    lfo.connect(synth.frequency); */
+
+    const loop = new Tone.Loop(function (time) {
+      synth.triggerAttackRelease(randomNote(), "2n", time);
+    }, "2n").start(0);
+    function randomNote() {
+      const notes = ["A3", "C3", "D3", "E3", "F3", "G3"];
+      return notes[Math.floor(Math.random() * notes.length)];
+    }
+
+
+    Tone.start();
+    Tone.Transport.start();
+    lfo.start();
+
+  </script>
+
+</body>
+
+</html>
