@@ -8,7 +8,7 @@
   <link href="http://fonts.cdnfonts.com/css/seven-segment" rel="stylesheet">
   <link href="https://api.mapbox.com/mapbox-gl-js/v2.10.0/mapbox-gl.css" rel="stylesheet">
   <script src="https://api.mapbox.com/mapbox-gl-js/v2.10.0/mapbox-gl.js"></script>
-  <script src='https://unpkg.com/@turf/turf@6/turf.min.js'></script>
+  <script src="https://unpkg.com/@turf/turf@6/turf.min.js"></script>
   <script src="https://unpkg.com/tone"></script>
 
   <style>
@@ -176,6 +176,7 @@
     ];
 
     // Create pig starting point, mobility level, and properties //
+    var sounds = false;
     var left = false;
     var right = false;
     var staTrate = 0
@@ -641,16 +642,14 @@ gasuse            }, 3000);
         gas = 0;
         features.style.opacity = "visible",
 
-          feats.textContent = `YO OUTA GAS BRO !`;
+          feats.textContent = `YO OUTA GAS BRO !!   HIT F5 TO RETRY`;
         setTimeout(function () {
           features.style.visibility = "visible"
         }, 500);
 
 
 
-        setTimeout(function () {
-          features.style.visibility = "hidden"
-        }, 3000);
+  
 
         stats.setAttribute('style', 'white-space: pre;');
         statBox.textContent = `Speed: ${mobility[2][moblvl]} kph\r\nDeg: ${long.toFixed(2)}, ${lat.toFixed(2)}\r\nTgt Range: ${proximity}\r\nCoins: $ ${coins}\r\nGas: ${gas.toFixed(0)} litres`;
@@ -701,6 +700,8 @@ gasuse            }, 3000);
     // directional keys event listener
     let isKeyDown = false;
     document.body.addEventListener('keydown', function (e) {
+
+      if (sounds == false) {music()}
 
       if (e.which == 38 && moblvl < 10) {
         if (isKeyDown) { return; } // If key was already down, don't do anything
@@ -771,7 +772,8 @@ gasuse            }, 3000);
 
 
 
-
+function music(){
+  sounds = true;
 
     const synth = new Tone.Synth().toDestination();
 
@@ -792,10 +794,14 @@ gasuse            }, 3000);
       return notes[Math.floor(Math.random() * notes.length)];
     }
 
-
+if (sounds = true){
     Tone.start();
     Tone.Transport.start();
+}
+
+
     /* lfo.start(); */
+  }
 
   </script>
 
